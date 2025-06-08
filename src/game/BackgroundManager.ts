@@ -3,8 +3,9 @@ import Phaser from "phaser";
 export class BackgroundManager {
   private scene: Phaser.Scene;
   private clouds!: Phaser.GameObjects.TileSprite;
+  private clouds2!: Phaser.GameObjects.TileSprite;
   private mountains!: Phaser.GameObjects.TileSprite;
-  private ground!: Phaser.GameObjects.TileSprite;
+  public ground!: Phaser.GameObjects.TileSprite;
   private sky!: Phaser.GameObjects.TileSprite;
 
   constructor(scene: Phaser.Scene) {
@@ -35,7 +36,12 @@ export class BackgroundManager {
       .setOrigin(0, 0)
       .setScrollFactor(0);
     this.clouds = this.scene.add
-      .tileSprite(0, 0, width, height, "clouds1")
+      .tileSprite(0, 0, width * 2.5, height, "clouds1")
+      .setOrigin(0.9, 0)
+      .setScrollFactor(0)
+      .setScale(0.4);
+    this.clouds2 = this.scene.add
+      .tileSprite(0, 0, width * 2.5, height, "clouds2")
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setScale(0.4);
@@ -47,6 +53,7 @@ export class BackgroundManager {
 
   update() {
     this.clouds.tilePositionX += 0.2;
+    this.clouds2.tilePositionX += 0.2;
     this.mountains.tilePositionX += 3.5;
     this.ground.tilePositionX += 7.0;
     this.sky.tilePositionX += 0.1;

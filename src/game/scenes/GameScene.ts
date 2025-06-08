@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { ObstacleManager } from "../ObstacleManager";
 import { BackgroundManager } from "../BackgroundManager";
+import { PlayerController } from "../controllers/Playercontroller";
 type ObstacleConfig = {
   y: number;
   scale: number;
@@ -11,9 +12,10 @@ class GameScene extends Phaser.Scene {
   cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   background: Phaser.GameObjects.Image;
   camera: Phaser.Cameras.Scene2D.Camera;
-  obstacles: Phaser.Physics.Arcade.Group;
-  obstacleManage: ObstacleManager;
-  bgManager: BackgroundManager;
+
+  obstacleManager: ObstacleManager;
+  bgManager!: BackgroundManager;
+  playerController!: PlayerController;
 
   obstacleSettings: Record<string, ObstacleConfig> = {
     rock: { y: 700, scale: 0.15 },
@@ -23,17 +25,23 @@ class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
     this.bgManager = new BackgroundManager(this);
+    this.playerController = new PlayerController(this);
+    this.obstacleManager = new ObstacleManager(this);
   }
 
   preload() {
+    this.load.spritesheet("player", "assets/player-sprite-sheet.png", {
+      frameWidth: 279,
+      frameHeight: 384,
+    });
     this.load.image("ninja", "assets/ninja.png");
     this.load.image("key", "assets/Key.png");
     this.load.image("platform", "assets/platform.png");
     this.load.image("rock", "assets/rock.png");
-    this.load.image("bg", "assets/bg.png");
-    this.load.image("ground", "assets/platform-bg.png");
-    this.load.image("sky", "assets/sky-background.png");
+
     this.bgManager.preload();
+    this.playerController.preload();
+    this.obstacleManager.preload();
   }
 
   create() {
@@ -47,39 +55,16 @@ class GameScene extends Phaser.Scene {
     this.bgManager.create();
     this.camera = this.cameras.main;
 
-    // this.background = this.add.image(
-    //   this.cameras.main.width / 2,
-    //   this.cameras.main.height / 2,
-    //   "bg"
-    // );
-    // this.background.setDisplaySize(
-    //   this.cameras.main.width,
-    //   this.cameras.main.height
-    // );
+    this.playerController.create();
 
-    // this.background.setScrollFactor(0);
+    this.playerController.sprite.setCollideWorldBounds(true);
+    this.physics.add.collider(this.playerController.sprite, ground);
 
-    this.player = this.physics.add.sprite(
-      this.cameras.main.width / 5,
-      500,
-      "ninja"
-    );
-    this.player.setCollideWorldBounds(true);
-    this.player.setScale(0.2);
-    this.physics.add.collider(this.player, ground);
-
-    this.player.setDrag(0); // no resistance
+    this.playerController.sprite.setDrag(0); // no resistance
 
     // platforms
-    this.obstacles = this.physics.add.group();
+    // this.obstacles = this.physics.add.group();
 
-    // this.time.addEvent({
-    //   delay: 2000,
-    //   callback: this.spawnObstacle,
-    //   callbackScope: this,
-    //   loop: true,
-    // });
-    this.sheduleNextObstacle();
     // this.physics.add.overlap(
     //   this.player,
     //   this.obstacles,
@@ -93,37 +78,9 @@ class GameScene extends Phaser.Scene {
 
   update() {
     this.bgManager.update();
-    if (this.cursors.left?.isDown) {
-      this.player.setVelocityX(-560);
-    } else if (this.cursors.right?.isDown) {
-      this.player.setVelocityX(560);
-    } else if (this.cursors.up?.isDown) {
-      this.player.setVelocityY(-500);
-    } else if (this.cursors.down?.isDown) {
-      this.player.setVelocityY(500);
-    } else {
-      this.player.setVelocityX(0);
-    }
-    if (this.cursors.space?.isDown && this.player.body?.touching.down) {
-      this.player.setVelocityY(-2650);
-      //   this.player.setVelocityX(1250);
-    }
-    if (this.cursors.up?.isDown) {
-      this.player.setVelocityY(-750);
-    }
-    if (this.cursors.down?.isDown) {
-      this.player.setVelocityY(500);
-    }
-
-    // if (this.cursors.up?.isDown && this.player.body?.blocked.down) {
-    //   this.player.setVelocity(-500);
-    // }
-
-    this.obstacles.getChildren().forEach((obstacle) => {
-      if (obstacle.x < -obstacle.width) {
-        this.obstacles.remove(obstacle, true, true);
-      }
-    });
+    this.playerController.update();
+    this.obstacleManager.sheduleNextObstacle();
+    this.obstacleManager.update();
   }
 
   spawnObstacle() {
@@ -153,52 +110,14 @@ class GameScene extends Phaser.Scene {
     this.scene.restart();
   }
 
-  sheduleNextObstacle() {
-    const delay = Phaser.Math.Between(1500, 3000);
+  // sheduleNextObstacle() {
+  //   const delay = Phaser.Math.Between(1500, 3000);
 
-    this.time.delayedCall(delay, () => {
-      this.spawnObstacle();
-      this.sheduleNextObstacle();
-    });
-  }
-
-  private createKey(): Phaser.Physics.Arcade.Sprite {
-    const key = this.obstacles.create(this.cameras.main.width + 50, 500, "key");
-    key.setScale(0.15);
-    key.setVelocityX(-700);
-    key.setImmovable(true);
-    key.body.allowGravity = false;
-
-    return key;
-  }
-
-  private createRock(): Phaser.Physics.Arcade.Sprite {
-    const rock = this.obstacles.create(
-      this.cameras.main.width + 50,
-      700,
-      "rock"
-    );
-    rock.setScale(0.15);
-    rock.setVelocityX(-1000);
-    rock.setImmovable(true);
-    rock.body.allowGravity = false;
-
-    return rock;
-  }
-
-  private createPlatform(): Phaser.Physics.Arcade.Sprite {
-    const platform = this.obstacles.create(
-      this.cameras.main.width + 50,
-      475,
-      "platform"
-    );
-    platform.setScale(0.15);
-    platform.setVelocityX(-800);
-    platform.setImmovable(true);
-    platform.body.allowGravity = false;
-    // this.physics.add.collider(this.player, platform);
-    return platform;
-  }
+  //   this.time.delayedCall(delay, () => {
+  //     this.spawnObstacle();
+  //     this.sheduleNextObstacle();
+  //   });
+  // }
 }
 
 export default GameScene;
